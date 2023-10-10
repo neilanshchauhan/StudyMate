@@ -1,11 +1,13 @@
 from django.shortcuts import render, redirect
 from .models import Room,Topic,Message,User
 from django.db.models import Q
-from .forms import RoomForm,UserForm, CustomUserCreationForm
+from .forms import RoomForm,UserForm, MyUserCreationForm
 from django.contrib import messages
 from django.contrib.auth import login,logout,authenticate
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
+from django.contrib.auth.forms import UserCreationForm
+
 # Create your views here.
 
 def login_page(request):
@@ -15,15 +17,15 @@ def login_page(request):
         return redirect('home')
 
     if request.method == 'POST':
-        email = request.POST.get('email').lower()
+        username = request.POST.get('username')
         password = request.POST.get('password')
 
         try:
-            user = User.objects.get(email=email)
+            user = User.objects.get(username=username)
         except:
             messages.error(request,'User does not Exist')
 
-        user = authenticate(request, email=email, password=password)
+        user = authenticate(request, username=username, password=password)
 
         if user is not None:
             login(request,user)
@@ -40,10 +42,9 @@ def logout_user(request):
     return redirect('home')
 
 def register_page(request):
-    page = 'register'
-    form = CustomUserCreationForm()
+    form = MyUserCreationForm()
     if request.method=='POST':
-        form = CustomUserCreationForm(request.POST)
+        form = MyUserCreationForm(request.POST)
         if form.is_valid:
             user = form.save(commit=False)
             user.username = user.username.lower()
@@ -69,6 +70,7 @@ def home(request):
     context = {'rooms':rooms,'topics':topics,'room_count':room_count,'room_messages':room_messages}
     return render(request, 'base/home.html',context)
 
+@login_required(login_url='login')
 def room(request,pk):
     room = Room.objects.get(id=pk)
     room_messages = room.message_set.all().order_by('-created')
@@ -85,6 +87,7 @@ def room(request,pk):
     context = {'room':room,'room_messages':room_messages,'participants':participants}
     return render(request,'base/room.html',context)
 
+@login_required(login_url='login')
 def user_profile(request,pk):
     user = User.objects.get(id=pk)
     rooms = user.room_set.all()
